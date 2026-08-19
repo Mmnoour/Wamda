@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>لعبة الكلمات السريعة | Typing Duel</title>
+    <!-- Google Fonts: Tajawal for Arabic, Poppins for English -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Tajawal:wght@300;400;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- ================= LOBBY SCREEN ================= -->
+        <div id="screen-lobby" class="screen active">
+            <header class="lobby-header">
+                <div class="logo">
+                    <i class="fa-solid fa-keyboard keyboard-icon"></i>
+                    <h1>برق الكلمات</h1>
+                    <p>أسرع كاتب يفوز بالقمة!</p>
+                </div>
+            </header>
+
+            <main class="lobby-main">
+                <div class="input-card">
+                    <label for="player-name"><i class="fa-solid fa-user"></i> اسم اللاعب</label>
+                    <input type="text" id="player-name" placeholder="أدخل اسمك هنا..." maxlength="15" autocomplete="off">
+                </div>
+
+                <div class="action-cards">
+                    <!-- Create Room -->
+                    <div class="card create-card">
+                        <h3><i class="fa-solid fa-plus-circle"></i> إنشاء غرفة جديدة</h3>
+                        
+                        <div class="form-group">
+                            <label>اللغة (Language)</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="lang-select" value="ar" checked>
+                                    <span>عربي</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="lang-select" value="en">
+                                    <span>English</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>الصعوبة (Difficulty)</label>
+                            <div class="select-wrapper">
+                                <select id="difficulty-select">
+                                    <option value="easy">سهل (Easy)</option>
+                                    <option value="medium" selected>متوسط (Medium)</option>
+                                    <option value="hard">صعب (Hard)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button id="btn-create-room" class="btn btn-primary"><i class="fa-solid fa-gamepad"></i> أنشئ غرفة</button>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="or-divider">
+                        <span>أو</span>
+                    </div>
+
+                    <!-- Join Room -->
+                    <div class="card join-card">
+                        <h3><i class="fa-solid fa-right-to-bracket"></i> انضمام لغرفة</h3>
+                        <div class="form-group">
+                            <label for="room-code-input">رقم الغرفة (Room Code)</label>
+                            <input type="number" id="room-code-input" placeholder="مثال: 5432" pattern="[0-9]*" inputmode="numeric">
+                        </div>
+                        <button id="btn-join-room" class="btn btn-secondary"><i class="fa-solid fa-arrow-right-to-bracket"></i> دخول الغرفة</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- ================= WAITING SCREEN ================= -->
+        <div id="screen-waiting" class="screen">
+            <header class="screen-header">
+                <button class="btn-leave-lobby btn-icon-only"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2>غرفة الانتظار</h2>
+                <div style="width: 40px;"></div> <!-- Spacer -->
+            </header>
+
+            <div class="room-info-bar">
+                <div class="info-badge">
+                    <i class="fa-solid fa-hashtag"></i>
+                    <span id="display-room-code" class="code-text">0000</span>
+                    <button id="btn-copy-code" class="btn-copy" title="نسخ الكود"><i class="fa-solid fa-copy"></i></button>
+                </div>
+                <div class="room-settings-badges">
+                    <span id="badge-lang" class="badge">عربي</span>
+                    <span id="badge-diff" class="badge">متوسط</span>
+                </div>
+            </div>
+
+            <main class="waiting-main">
+                <div class="players-list-container">
+                    <h3>اللاعبون المتصلون (<span id="players-count">0</span>)</h3>
+                    <div id="players-list" class="players-list">
+                        <!-- Dynamic Player Cards -->
+                    </div>
+                </div>
+
+                <div class="waiting-footer">
+                    <div id="host-controls" class="hidden">
+                        <button id="btn-start-game" class="btn btn-primary btn-large btn-pulse"><i class="fa-solid fa-play"></i> ابدأ اللعبة</button>
+                    </div>
+                    <div id="guest-waiting-msg" class="waiting-msg">
+                        <i class="fa-solid fa-spinner fa-spin"></i> بانتظار مضيف الغرفة لبدء اللعبة...
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- ================= GAME SCREEN ================= -->
+        <div id="screen-game" class="screen">
+            <header class="game-header">
+                <div class="round-display">
+                    جولة: <span id="current-round">1</span> / <span id="total-rounds">10</span>
+                </div>
+                <div class="timer-container">
+                    <div id="game-timer-bar" class="timer-bar"></div>
+                </div>
+            </header>
+
+            <main class="game-main">
+                <!-- Mini Scoreboard Preview on top -->
+                <div id="mini-scoreboard" class="mini-scoreboard">
+                    <!-- Dynamic mini players and streaks -->
+                </div>
+
+                <!-- Word Display Container -->
+                <div class="word-display-box">
+                    <div id="word-target" class="word-target">
+                        <!-- Letters wrapped in spans will go here -->
+                    </div>
+                </div>
+
+                <!-- Input Container -->
+                <div class="input-container">
+                    <input type="text" id="game-input" placeholder="اكتب الكلمة هنا ثم اضغط مسافة..." 
+                           autocorrect="off" autocapitalize="none" spellcheck="false" autocomplete="off" disabled>
+                </div>
+
+                <!-- Live notifications of typing (e.g. "Ahmed typed it!") -->
+                <div id="live-notifications" class="live-notifications">
+                    <!-- Notifications float up here -->
+                </div>
+            </main>
+        </div>
+
+        <!-- ================= RESULTS SCREEN ================= -->
+        <div id="screen-results" class="screen">
+            <header class="results-header">
+                <h2>ترتيب سرعة الجولة</h2>
+                <div class="word-was">الكلمة كانت: <span id="results-word-display">جودي حلوه</span></div>
+            </header>
+
+            <main class="results-main">
+                <div class="round-leaderboard">
+                    <div class="leaderboard-header-row">
+                        <span>الترتيب</span>
+                        <span>الاسم</span>
+                        <span>السرعة</span>
+                        <span>النقاط</span>
+                    </div>
+                    <div id="round-results-list" class="round-results-list">
+                        <!-- Dynamic list of players speed and points -->
+                    </div>
+                </div>
+            </main>
+
+            <footer class="results-footer">
+                <div class="next-round-countdown">
+                    الجولة التالية تبدأ خلال <span id="results-countdown">5</span> ثوانٍ...
+                </div>
+            </footer>
+        </div>
+
+        <!-- ================= GAME OVER SCREEN ================= -->
+        <div id="screen-game-over" class="screen">
+            <header class="gameover-header">
+                <i class="fa-solid fa-trophy trophy-crown"></i>
+                <h2>النتائج النهائية</h2>
+                <p>انتهت اللعبة! تهانينا للفائزين</p>
+            </header>
+
+            <main class="gameover-main">
+                <!-- Podium for top 3 -->
+                <div class="podium-container">
+                    <div id="podium-second" class="podium-player second">
+                        <div class="avatar"><i class="fa-solid fa-medal silver"></i></div>
+                        <div class="name" id="podium-2nd-name">-</div>
+                        <div class="score" id="podium-2nd-score">-</div>
+                        <div class="pedestal">2</div>
+                    </div>
+                    <div id="podium-first" class="podium-player first">
+                        <div class="crown"><i class="fa-solid fa-crown"></i></div>
+                        <div class="avatar"><i class="fa-solid fa-trophy gold"></i></div>
+                        <div class="name" id="podium-1st-name">-</div>
+                        <div class="score" id="podium-1st-score">-</div>
+                        <div class="pedestal">1</div>
+                    </div>
+                    <div id="podium-third" class="podium-player third">
+                        <div class="avatar"><i class="fa-solid fa-medal bronze"></i></div>
+                        <div class="name" id="podium-3rd-name">-</div>
+                        <div class="score" id="podium-3rd-score">-</div>
+                        <div class="pedestal">3</div>
+                    </div>
+                </div>
+
+                <!-- Full ranking list below -->
+                <div class="final-scores-container">
+                    <h3>الترتيب الكامل</h3>
+                    <div id="final-scores-list" class="final-scores-list">
+                        <!-- Remaining players -->
+                    </div>
+                </div>
+            </main>
+
+            <footer class="gameover-footer">
+                <button id="btn-return-lobby" class="btn btn-primary btn-large"><i class="fa-solid fa-house"></i> العودة للرئيسية</button>
+            </footer>
+        </div>
+
+    </div>
+
+    <!-- Error Toast Message -->
+    <div id="toast-message" class="toast">
+        <span id="toast-text"></span>
+    </div>
+
+    <!-- Socket.IO library served by Flask-SocketIO -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Game JS -->
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+</body>
+</html>
