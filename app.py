@@ -63,11 +63,11 @@ def handle_disconnect():
                 if room['host_sid'] == sid:
                     new_host = list(room['players'].keys())[0]
                     room['host_sid'] = new_host
-                    emit('new_host', {'host_name': room['players'][new_host]['name'], 'host_sid': new_host}, to=room_id)
+                    socketio.emit('new_host', {'host_name': room['players'][new_host]['name'], 'host_sid': new_host}, to=room_id)
                     print(f"Host left. New host of room {room_id} is {room['players'][new_host]['name']}")
                 
                 # Notify room about player left
-                emit('player_left', {
+                socketio.emit('player_left', {
                     'name': player_name,
                     'players': get_players_list(room_id)
                 }, to=room_id)
@@ -171,7 +171,7 @@ def handle_join_room(data):
     })
     
     # Notify room
-    emit('player_joined', {
+    socketio.emit('player_joined', {
         'name': name,
         'players': get_players_list(room_id)
     }, to=room_id)
@@ -216,11 +216,15 @@ def handle_start_game():
         
     room['word_start_time'] = time.time()
     
-    emit('game_started', {
+    socketio.emit('game_started', {
         'word': room['current_word'],
         'index': 0,
         'total_rounds': len(room['word_list'])
     }, to=room_id)
+    
+    # Start background round timer (in case nobody answers)
+    socketio.start_background_task(round_timer_task, room_id, 0)
+    
     print(f"Game started in room {room_id}. First word: {room['current_word']}")
 
 @socketio.on('submit_word')
@@ -290,6 +294,15 @@ def end_round_delayed(room_id, word_index):
         if room['status'] == 'playing' and room['current_word_index'] == word_index:
             end_round(room_id)
 
+def round_timer_task(room_id, word_index):
+    # Wait for 13 seconds (timer limit is 12s, wait 13s to let client finish)
+    socketio.sleep(13)
+    if room_id in rooms:
+        room = rooms[room_id]
+        if room['status'] == 'playing' and room['current_word_index'] == word_index:
+            print(f"Round timer expired for room {room_id}, round {word_index}. Ending round.")
+            end_round(room_id)
+
 def end_round(room_id):
     if room_id not in rooms:
         return
@@ -315,8 +328,7 @@ def end_round(room_id):
         p_sid = w['sid']
         player = room['players'][p_sid]
         
-        # Streak 🔥 logic (Only the 1st place gets their streak incremented or maintained, or let's say:
-        # anyone who gets 1st place gets streak incremented. Others get streak reset.
+        # Streak 🔥 logic
         if rank == 1:
             player['streak'] += 1
             streak_bonus = 5 if player['streak'] >= 3 else 0
@@ -357,7 +369,7 @@ def end_round(room_id):
     # Sort final results display (answered first, then those who didn't answer)
     results_list = sorted(results_list, key=lambda x: (x['rank'] is None, x['rank']))
     
-    emit('round_completed', {
+    socketio.emit('round_completed', {
         'word': room['current_word'],
         'round_results': results_list,
         'scoreboard': get_players_list(room_id)
@@ -380,7 +392,7 @@ def next_round(room_id):
     if next_idx >= len(room['word_list']):
         # Game Over
         room['status'] = 'finished'
-        emit('game_over', {
+        socketio.emit('game_over', {
             'scoreboard': sorted(get_players_list(room_id), key=lambda x: x['score'], reverse=True)
         }, to=room_id)
         print(f"Game over in room {room_id}")
@@ -397,11 +409,15 @@ def next_round(room_id):
             
         room['word_start_time'] = time.time()
         
-        emit('new_word', {
+        socketio.emit('new_word', {
             'word': room['current_word'],
             'index': next_idx,
             'total_rounds': len(room['word_list'])
         }, to=room_id)
+        
+        # Start background round timer (in case nobody answers)
+        socketio.start_background_task(round_timer_task, room_id, next_idx)
+        
         print(f"Room {room_id} round {next_idx} started. Word: {room['current_word']}")
 
 import os
