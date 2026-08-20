@@ -1326,8 +1326,8 @@
         <span id="toast-text"></span>
     </div>
 
-    <!-- Socket.IO library served by Flask-SocketIO -->
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- Socket.IO library served by CDN -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     
     <!-- Inline Game Logic JS to prevent 404 static asset loading issues on Render -->
     <script>
@@ -1476,6 +1476,14 @@
         // Initialize Socket.io and attach events
         function initSocket() {
             socket = io();
+            
+            socket.on('connect', () => {
+                console.log('Connected to server successfully');
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+            });
             
             // Server events
             socket.on('error_message', (data) => {
@@ -1983,6 +1991,11 @@
                     return;
                 }
                 
+                if (!socket || !socket.connected) {
+                    showToast(document.querySelector('input[name="lang-select"]:checked').value === 'ar' ? 'جاري الاتصال بالسيرفر، يرجى المحاولة بعد قليل...' : 'Connecting to server, please try again in a moment...');
+                    return;
+                }
+                
                 initAudio();
                 
                 const langVal = document.querySelector('input[name="lang-select"]:checked').value;
@@ -2007,6 +2020,11 @@
                 if (!roomCode) {
                     showToast('الرجاء إدخال رقم الغرفة!');
                     inputRoomCode.focus();
+                    return;
+                }
+                
+                if (!socket || !socket.connected) {
+                    showToast(document.querySelector('input[name="lang-select"]:checked').value === 'ar' ? 'جاري الاتصال بالسيرفر، يرجى المحاولة بعد قليل...' : 'Connecting to server, please try again in a moment...');
                     return;
                 }
                 
