@@ -1544,11 +1544,21 @@
             socket.on('game_started', (data) => {
                 showScreen('game');
                 document.getElementById('total-rounds').textContent = data.total_rounds;
+                document.getElementById('current-round').textContent = 1;
                 
-                // Wait briefly for a nice screen transition, then display the first word
                 const input = document.getElementById('game-input');
                 input.value = '';
                 input.disabled = true;
+                
+                // Wait 1.5 seconds for transition, then show word and start typing
+                setTimeout(() => {
+                    currentWord = data.word;
+                    renderTargetWord();
+                    input.disabled = false;
+                    input.focus();
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    startCountdownTimer(12);
+                }, 1500);
             });
             
             socket.on('new_word', (data) => {
