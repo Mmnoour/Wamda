@@ -1329,9 +1329,7 @@
     <!-- Socket.IO library served by CDN -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     
-    <!-- Inline Game Logic JS to prevent 404 static asset loading issues on Render -->
     <script>
-        // Game State Variables
         let socket;
         let playerName = '';
         let roomId = '';
@@ -1340,22 +1338,19 @@
         let currentDifficulty = 'medium';
         let currentWord = '';
         let timerInterval = null;
-        let roundTimer = 12; // 12 seconds per round
+        let roundTimer = 12;
 
-        // Web Audio API Sound Synthesizer
         let audioCtx = null;
 
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            // Resume audio context if suspended (browser security policies)
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
         }
 
-        // Play synthetic sound effects
         function playSound(type) {
             if (!audioCtx) return;
             
@@ -1369,7 +1364,6 @@
                 const now = audioCtx.currentTime;
                 
                 if (type === 'click') {
-                    // Short high-pitched beep for correct character
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(800, now);
                     gainNode.gain.setValueAtTime(0.05, now);
@@ -1377,7 +1371,6 @@
                     osc.start(now);
                     osc.stop(now + 0.08);
                 } else if (type === 'error_click') {
-                    // Lower buzzer sound for incorrect character
                     osc.type = 'sawtooth';
                     osc.frequency.setValueAtTime(150, now);
                     gainNode.gain.setValueAtTime(0.08, now);
@@ -1385,16 +1378,14 @@
                     osc.start(now);
                     osc.stop(now + 0.12);
                 } else if (type === 'success') {
-                    // Nice ascending chime for completing a word
                     osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(523.25, now); // C5
-                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
                     gainNode.gain.setValueAtTime(0.1, now);
                     gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
                     osc.start(now);
                     osc.stop(now + 0.25);
                 } else if (type === 'join') {
-                    // Upward sweep for join
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(300, now);
                     osc.frequency.exponentialRampToValueAtTime(600, now + 0.2);
@@ -1403,7 +1394,6 @@
                     osc.start(now);
                     osc.stop(now + 0.2);
                 } else if (type === 'leave') {
-                    // Downward sweep for leave
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(450, now);
                     osc.frequency.exponentialRampToValueAtTime(200, now + 0.2);
@@ -1412,7 +1402,6 @@
                     osc.start(now);
                     osc.stop(now + 0.2);
                 } else if (type === 'win') {
-                    // Happy fanfare for game over or winner
                     playFanfare();
                 }
             } catch (e) {
@@ -1421,7 +1410,7 @@
         }
 
         function playFanfare() {
-            const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+            const notes = [261.63, 329.63, 392.00, 523.25];
             notes.forEach((freq, i) => {
                 setTimeout(() => {
                     if (!audioCtx) return;
@@ -1438,7 +1427,6 @@
             });
         }
 
-        // DOM Elements
         const screens = {
             lobby: document.getElementById('screen-lobby'),
             waiting: document.getElementById('screen-waiting'),
@@ -1447,7 +1435,6 @@
             gameover: document.getElementById('screen-game-over')
         };
 
-        // Toast notification helper
         function showToast(message, isSuccess = false) {
             const toast = document.getElementById('toast-message');
             const toastText = document.getElementById('toast-text');
@@ -1462,7 +1449,6 @@
             }, 3000);
         }
 
-        // Helper to switch screens
         function showScreen(screenKey) {
             Object.keys(screens).forEach(key => {
                 if (key === screenKey) {
@@ -1473,9 +1459,8 @@
             });
         }
 
-        // Initialize Socket.io and attach events
         function initSocket() {
-            socket = io();
+            socket = io({transports: ['polling']});
             
             socket.on('connect', () => {
                 console.log('Connected to server successfully');
@@ -1485,7 +1470,6 @@
                 console.error('Socket connection error:', error);
             });
             
-            // Server events
             socket.on('error_message', (data) => {
                 showToast(data.message);
             });
@@ -1521,7 +1505,6 @@
                 const leaveMsg = currentLanguage === 'ar' ? `غادر اللاعب ${data.name}` : `${data.name} left the room`;
                 showToast(leaveMsg);
                 
-                // Update mini scoreboard if we are in game
                 updateMiniScoreboard(data.players);
             });
             
@@ -1534,7 +1517,6 @@
                     : `New host is ${data.host_name}`;
                 showToast(hostMsg, true);
                 
-                // Show start controls if I'm the new host
                 if (isHost) {
                     document.getElementById('host-controls').classList.remove('hidden');
                     document.getElementById('guest-waiting-msg').classList.add('hidden');
@@ -1550,7 +1532,6 @@
                 input.value = '';
                 input.disabled = true;
                 
-                // Wait 1.5 seconds for transition, then show word and start typing
                 setTimeout(() => {
                     currentWord = data.word;
                     renderTargetWord();
@@ -1568,16 +1549,13 @@
                 document.getElementById('current-round').textContent = data.index + 1;
                 renderTargetWord();
                 
-                // Reset input
                 const input = document.getElementById('game-input');
                 input.value = '';
                 input.disabled = false;
                 
-                // Focus input (Crucial for mobile soft keyboard popup!)
                 input.focus();
                 input.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 
-                // Set up timer countdown
                 startCountdownTimer(12);
             });
             
@@ -1617,7 +1595,6 @@
             });
         }
 
-        // SETUP WAITING ROOM SCREEN
         function setupWaitingScreen(players) {
             showScreen('waiting');
             
@@ -1726,7 +1703,6 @@
             });
         }
 
-        // GAMEPLAY LOGIC
         function renderTargetWord() {
             const targetBox = document.getElementById('word-target');
             targetBox.innerHTML = '';
@@ -1806,7 +1782,6 @@
             }, 2000);
         }
 
-        // REAL-TIME INPUT VERIFICATION
         function verifyInput() {
             const input = document.getElementById('game-input');
             const typed = input.value;
@@ -1849,7 +1824,6 @@
             }
         }
 
-        // RENDER ROUND RESULTS SCREEN
         function renderRoundResults(results) {
             const container = document.getElementById('round-results-list');
             container.innerHTML = '';
@@ -1893,17 +1867,17 @@
                     pointsColHtml = `<span class="result-points">+${res.points_earned}</span>`;
                     
                     row.innerHTML = `
-                        <div class="result-rank">${rankCol}</div>
-                        <div class="result-name">${nameColHtml}</div>
-                        <div>${speedColHtml}</div>
-                        <div>${pointsColHtml}</div>
+                         <div class="result-rank">${rankCol}</div>
+                         <div class="result-name">${nameColHtml}</div>
+                         <div>${speedColHtml}</div>
+                         <div>${pointsColHtml}</div>
                     `;
                 } else {
                     const noAnswerText = currentLanguage === 'ar' ? 'لم يجب' : 'No Answer';
                     row.innerHTML = `
-                        <div class="result-rank">${rankCol}</div>
-                        <div class="result-name">${nameColHtml}</div>
-                        <div class="result-no-answer">${noAnswerText}</div>
+                         <div class="result-rank">${rankCol}</div>
+                         <div class="result-name">${nameColHtml}</div>
+                         <div class="result-no-answer">${noAnswerText}</div>
                     `;
                 }
                 
@@ -1911,7 +1885,6 @@
             });
         }
 
-        // RENDER GAMEOVER RESULTS (PODIUM)
         function renderFinalScores(scoreboard) {
             const p1 = scoreboard[0];
             const p2 = scoreboard[1];
@@ -1974,16 +1947,15 @@
                     row.className = 'final-score-row';
                     
                     row.innerHTML = `
-                        <span class="final-score-rank">${idx + 4}</span>
-                        <span class="final-score-name">${p.name}</span>
-                        <span class="final-score-val">${p.score} ${currentLanguage === 'ar' ? 'نقطة' : 'pts'}</span>
+                         <span class="final-score-rank">${idx + 4}</span>
+                         <span class="final-score-name">${p.name}</span>
+                         <span class="final-score-val">${p.score} ${currentLanguage === 'ar' ? 'نقطة' : 'pts'}</span>
                     `;
                     listContainer.appendChild(row);
                 });
             }
         }
 
-        // ATTACH DOM EVENT LISTENERS
         document.addEventListener('DOMContentLoaded', () => {
             initSocket();
             
@@ -2002,7 +1974,7 @@
                 }
                 
                 if (!socket || !socket.connected) {
-                    showToast(document.querySelector('input[name="lang-select"]:checked').value === 'ar' ? 'جاري الاتصال بالسيرفر، يرجى المحاولة بعد قليل...' : 'Connecting to server, please try again in a moment...');
+                    showToast(document.querySelector('input[name="lang-select"]:checked').value === 'ar' ? 'جاري إيقاظ الخادم (سيرفر Render المجاني)، يرجى الانتظار 30 ثانية والمحاولة مجدداً...' : 'Waking up server (Render Free Tier), please wait 30 seconds and try again...');
                     return;
                 }
                 
@@ -2034,7 +2006,7 @@
                 }
                 
                 if (!socket || !socket.connected) {
-                    showToast(document.querySelector('input[name="lang-select"]:checked').value === 'ar' ? 'جاري الاتصال بالسيرفر، يرجى المحاولة بعد قليل...' : 'Connecting to server, please try again in a moment...');
+                    showToast(document.querySelector('input[name="lang-select"]:checked').value === 'ar' ? 'جاري إيقاظ الخادم (سيرفر Render المجاني)، يرجى الانتظار 30 ثانية والمحاولة مجدداً...' : 'Waking up server (Render Free Tier), please wait 30 seconds and try again...');
                     return;
                 }
                 
